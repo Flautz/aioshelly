@@ -406,6 +406,57 @@ class RpcDevice:
         }
         await self.call_rpc("BluTRV.Call", params=params, timeout=BLU_TRV_TIMEOUT)
 
+    async def _blu_trv_call(
+        self, trv_id: int, method: str, params: dict[str, Any]
+    ) -> Any:
+        """Call a method on a BLU TRV.
+
+        Errors of the TRV are returned as the result of BluTRV.Call.
+        """
+        result = await self.call_rpc(
+            "BluTRV.Call",
+            params={"id": trv_id, "method": method, "params": params},
+            timeout=BLU_TRV_TIMEOUT,
+        )
+        if (
+            isinstance(result, dict)
+            and isinstance(result.get("code"), int)
+            and result["code"] < 0
+            and "message" in result
+        ):
+            raise RpcCallError(result["code"], result["message"])
+        return result
+
+    async def blu_trv_list_schedule_rules(self, trv_id: int) -> dict[str, Any]:
+        """List the schedule rules stored on a BLU TRV."""
+        return cast(
+            dict[str, Any],
+            await self._blu_trv_call(trv_id, "Trv.ListScheduleRules", {"id": 0}),
+        )
+
+    async def blu_trv_add_schedule_rule(self, trv_id: int, rule: dict[str, Any]) -> int:
+        """Add a schedule rule to a BLU TRV and return its ID."""
+        result = await self._blu_trv_call(
+            trv_id, "Trv.AddScheduleRule", {"id": 0, "rule": rule}
+        )
+        return int(result["rule_id"])
+
+    async def blu_trv_update_schedule_rule(
+        self, trv_id: int, rule_id: int, rule: dict[str, Any]
+    ) -> None:
+        """Update a schedule rule of a BLU TRV."""
+        await self._blu_trv_call(
+            trv_id,
+            "Trv.UpdateScheduleRule",
+            {"id": 0, "rule_id": rule_id, "rule": rule},
+        )
+
+    async def blu_trv_remove_schedule_rule(self, trv_id: int, rule_id: int) -> None:
+        """Remove a schedule rule from a BLU TRV."""
+        await self._blu_trv_call(
+            trv_id, "Trv.RemoveScheduleRule", {"id": 0, "rule_id": rule_id}
+        )
+
     async def blu_trv_update_firmware(self, trv_id: int) -> None:
         """Update firmware for BLU TRV."""
         await self.call_rpc(

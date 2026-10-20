@@ -1305,6 +1305,111 @@ async def test_blu_trv_clear_boost(
 
 
 @pytest.mark.asyncio
+async def test_blu_trv_list_schedule_rules(
+    rpc_device: RpcDevice,
+) -> None:
+    """Test RpcDevice blu_trv_list_schedule_rules() method."""
+    rules = {
+        "schedule_rev": 7,
+        "rules": [
+            {
+                "rule_id": 0,
+                "enable": True,
+                "target_C": 21.0,
+                "timespec": "0 0 8 * * SUN,MON,TUE,WED,THU,FRI,SAT",
+            }
+        ],
+    }
+    rpc_device.call_rpc_multiple.return_value = [rules]
+
+    assert await rpc_device.blu_trv_list_schedule_rules(200) == rules
+    assert rpc_device.call_rpc_multiple.call_count == 1
+    call_args_list = rpc_device.call_rpc_multiple.call_args_list
+    assert call_args_list[0][0][0][0][0] == "BluTRV.Call"
+    assert call_args_list[0][0][0][0][1] == {
+        "id": 200,
+        "method": "Trv.ListScheduleRules",
+        "params": {"id": 0},
+    }
+    assert call_args_list[0][0][1] == 60
+
+
+@pytest.mark.asyncio
+async def test_blu_trv_add_schedule_rule(
+    rpc_device: RpcDevice,
+) -> None:
+    """Test RpcDevice blu_trv_add_schedule_rule() method."""
+    rpc_device.call_rpc_multiple.return_value = [{"rule_id": 2}]
+    rule = {"enable": True, "timespec": "0 30 6 * * MON,TUE", "target_C": 20.5}
+
+    assert await rpc_device.blu_trv_add_schedule_rule(200, rule) == 2
+    call_args_list = rpc_device.call_rpc_multiple.call_args_list
+    assert call_args_list[0][0][0][0][0] == "BluTRV.Call"
+    assert call_args_list[0][0][0][0][1] == {
+        "id": 200,
+        "method": "Trv.AddScheduleRule",
+        "params": {"id": 0, "rule": rule},
+    }
+    assert call_args_list[0][0][1] == 60
+
+
+@pytest.mark.asyncio
+async def test_blu_trv_update_schedule_rule(
+    rpc_device: RpcDevice,
+) -> None:
+    """Test RpcDevice blu_trv_update_schedule_rule() method."""
+    rpc_device.call_rpc_multiple.return_value = [None]
+
+    await rpc_device.blu_trv_update_schedule_rule(200, 1, {"enable": False})
+
+    call_args_list = rpc_device.call_rpc_multiple.call_args_list
+    assert call_args_list[0][0][0][0][0] == "BluTRV.Call"
+    assert call_args_list[0][0][0][0][1] == {
+        "id": 200,
+        "method": "Trv.UpdateScheduleRule",
+        "params": {"id": 0, "rule_id": 1, "rule": {"enable": False}},
+    }
+    assert call_args_list[0][0][1] == 60
+
+
+@pytest.mark.asyncio
+async def test_blu_trv_remove_schedule_rule(
+    rpc_device: RpcDevice,
+) -> None:
+    """Test RpcDevice blu_trv_remove_schedule_rule() method."""
+    rpc_device.call_rpc_multiple.return_value = [None]
+
+    await rpc_device.blu_trv_remove_schedule_rule(200, 1)
+
+    call_args_list = rpc_device.call_rpc_multiple.call_args_list
+    assert call_args_list[0][0][0][0][0] == "BluTRV.Call"
+    assert call_args_list[0][0][0][0][1] == {
+        "id": 200,
+        "method": "Trv.RemoveScheduleRule",
+        "params": {"id": 0, "rule_id": 1},
+    }
+    assert call_args_list[0][0][1] == 60
+
+
+@pytest.mark.asyncio
+async def test_blu_trv_schedule_rule_error(
+    rpc_device: RpcDevice,
+) -> None:
+    """Test that errors returned by the TRV are raised as RpcCallError."""
+    rpc_device.call_rpc_multiple.return_value = [
+        {"code": -103, "message": "Argument `target_C` is invalid"}
+    ]
+
+    with pytest.raises(RpcCallError) as exc_info:
+        await rpc_device.blu_trv_add_schedule_rule(
+            200, {"timespec": "0 0 8 * * *", "target_C": 2}
+        )
+
+    assert exc_info.value.code == -103
+    assert exc_info.value.message == "Argument `target_C` is invalid"
+
+
+@pytest.mark.asyncio
 async def test_blu_trv_update_firmware(
     rpc_device: RpcDevice,
 ) -> None:
